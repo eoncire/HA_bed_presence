@@ -16,6 +16,10 @@ I recently remodeled my kitchen and added some pretty bright overhead lighting f
 
 ![ESP32](https://i.imgur.com/THQlqsE.png)
 ![1](https://i.imgur.com/uJFyjkN.png)
+![2](https://i.imgur.com/FmgNfqn.png)
+![3](https://i.imgur.com/w2Rp4wr.png)
+![4](https://i.imgur.com/GXp5IBR.png)
+![5](https://i.imgur.com/ohzYRhy.png)
 
 **ESP32** - I buy everything i can on Amazon becuase I'm impatient.  Again, I used an ESP32 versus an ESP8266 because they have several ADC pins.  The pressue sensor is analoge and needs an ADC pin to work.  I power the ESP32 via the onboard USB plug, I have a multi-port phone charger right next to my bed anyways.
 
