@@ -15,6 +15,7 @@ I recently remodeled my kitchen and added some pretty bright overhead lighting f
 ## Hardware
 
 ![ESP32](https://i.imgur.com/THQlqsE.png)
+![1](https://i.imgur.com/uJFyjkN.png)
 
 **ESP32** - I buy everything i can on Amazon becuase I'm impatient.  Again, I used an ESP32 versus an ESP8266 because they have several ADC pins.  The pressue sensor is analoge and needs an ADC pin to work.  I power the ESP32 via the onboard USB plug, I have a multi-port phone charger right next to my bed anyways.
 
@@ -28,6 +29,20 @@ I recently remodeled my kitchen and added some pretty bright overhead lighting f
 
 **ESPHome** - The first step was getting a value we can read in HA.  The actual code for ESPHome is very basic and could be more in depth.  I should probably use the built in functions to average the data but this works.  I'm using the ADC platform of the sensor core in ESPHome and reporting the value back to HA every second (again, overkill).  I'm assuming you know the ESPHome basics and not going into any more detial here.
 
+````
+sensor:
+  - platform: adc
+    pin: GPIO35
+    name: "Pressure 1"
+    update_interval: 1s
+    attenuation: 11db
+  - platform: adc  
+    pin: GPIO34
+    name: "Pressure 2"
+    update_interval: 1s
+    attenuation: 11db
+````
+
 **HomeAssistant** - Theres not a whole lot special in HA here, other than showing a readout for testing.  HA does control my lighitng which this sensor is part of, as well as a bedroom box fan on a smart switch.  The actual automations are all in NodeRed.
 
 **NodeRed** - This is where the magic happens!  The main reason to do this project is to not allow the main kitchen lights to go above a certain brightness value if both sides of the bed are occupied.  I also have set up an automation to turn on the bedroom fan (smart switch) if EITHER side of the bed is occupied, then turn off after 5 minutes if NEITHER side of the bed is occupied.
@@ -35,6 +50,8 @@ I recently remodeled my kitchen and added some pretty bright overhead lighting f
 ## Automations
 
 ![NodeRed Flow](https://i.imgur.com/3ZXEO0q.png)
+
+Link to the flow - https://pastebin.com/iajAT8FC
 
 The basic flow is as follows.  A **state_changed** node for each pressure sensor.  That sends the value readout (voltage) of the ADC pin on the ESP32.  
 
@@ -73,6 +90,20 @@ Lastly is a **link_out** node on the two outputs of the boolean_logic nodes that
 ![Link Out](https://i.imgur.com/ttGqf7m.png)
 
 
+## Lighting FLow Integration
 
+Here is the disaster of my kitchen lighting flow....
+
+![Kitchen](https://i.imgur.com/JjEb8Xq.png)
+
+Here is how I used this in my kitchen lighting flow.  I feed the 3 Wyze motion sensors i have into a switch node.  
+
+Actually, before the switch node is a simple **gate** node for another function.  I have an input_boolean set up in HA called Kitchen Motion.  That is exposed to my GoogleHome devices to be able to control via voice.  If that boolean / switch is turned on, it'll close the gate node and not allow any motion to be passed along the flow.  Say if we're sitting down to watch TV at night, I can tell google to turn off kitchen motion and the lights won't come on.  I have a small house that's very open, the kitchen / dining / living room all flow together and the kitchen lights are really bright.  
+
+Anywho, the switch node is set up to check the status of the global variable which is set in the other flow when both sides of the bed are occupied.  If that variable is TRUE then we go down one path, if FALSE then another.  That's how I set the lights to turn on / off differently if the bed is occupied.
+
+![Switch](https://i.imgur.com/BtbPD8i.png)
+
+If the bed is occupied on both sides and there is motion detected, only the light above the sink (single LED bulb) and the dining room overhead light (3 small LED bulbs) are turned on, and only at 10% brightness.  The delay for off (trigger node FTW!) is quick, only 1 minute.
 
 
