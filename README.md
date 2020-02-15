@@ -12,13 +12,21 @@ Demo Video - https://youtu.be/Ei5JgMIUK8M
 
 I recently remodeled my kitchen and added some pretty bright overhead lighting fixtures (Acenx Smart Dimmers) and motion control for them (Wyze Sense PIR).  A problem arose, our dog and cat will walk around at night and trigger the lights and even on a low brightness value based on time of day they still shine right into our bedroom.  I researched some options and this is what i came up with.  The thin film pressure sensors looked promising so i bought one and tried it.  After some testing for a few nights to get some values to work with and build automations on, this is what I've come up with.  I chose the ESP32 becuase it has several ADC (analoge to digital) pins and i wanted two sensors, one for each side of the bed.  The ESP8266 only has one ADC pin.
 
-## Hardware
+## Hardware / Installation
 
 ![ESP32](https://i.imgur.com/THQlqsE.png)
+
+Overview
 ![1](https://i.imgur.com/uJFyjkN.png)
+
+
 ![2](https://i.imgur.com/FmgNfqn.png)
 ![3](https://i.imgur.com/w2Rp4wr.png)
+
+The leads from the sensors are soldered to the wires.  I used two pieces of double sided foam tape to hold it together, the leads were really small and fragile, this should hold it.
 ![4](https://i.imgur.com/GXp5IBR.png)
+
+I used a little piece of double sided foam tape at the ends to hold it in place.
 ![5](https://i.imgur.com/ohzYRhy.png)
 
 **ESP32** - I buy everything i can on Amazon becuase I'm impatient.  Again, I used an ESP32 versus an ESP8266 because they have several ADC pins.  The pressue sensor is analoge and needs an ADC pin to work.  I power the ESP32 via the onboard USB plug, I have a multi-port phone charger right next to my bed anyways.
