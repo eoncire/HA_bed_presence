@@ -67,9 +67,9 @@ sensor:
         - logger.log: Pressure1 Off
 ````
 
-**HomeAssistant** - Theres not a whole lot special in HA here, other than showing a readout for testing.  HA does control my lighitng which this sensor is part of, as well as a bedroom box fan on a smart switch.  The actual automations are all in NodeRed.
+**HomeAssistant** - I added two **input_booleans** in my config file called pressure1 and pressure2.  ESPHome turns those on and off directly from the ESP32.  Secondly, I created an **input_select** which just serves as a visual to see what state the bed is in to make sure automations are behaving correctly.
 
-**NodeRed** - This is where the magic happens!  The main reason to do this project is to not allow the main kitchen lights to go above a certain brightness value if both sides of the bed are occupied.  I also have set up an automation to turn on the bedroom fan (smart switch) if EITHER side of the bed is occupied, then turn off after 5 minutes if NEITHER side of the bed is occupied.
+**NodeRed** - This is where (most of) the magic happens!  The main reason to do this project is to not allow the main kitchen lights to go above a certain brightness value if both sides of the bed are occupied.  I also have set up an automation to turn on the bedroom fan (smart switch) if EITHER side of the bed is occupied, then turn off after the bed is in an Empty state.
 
 ## Automations
 
@@ -111,7 +111,7 @@ The trigger nodes aren't currently used, but I do use the **Link Out** node as a
 
 ## Lighting FLow Integration
 
-Here is the disaster of my kitchen lighting flow....
+Here is the disaster of my kitchen lighting flow....  In the middle is the swtich node with 3 outputs for the 3 different bed states.  Lighting automations are different based on bed occupancy.  If no one is in the bed it's based on time and a lux sensor in a window.  During daytime it is based on the ambient light level outside, at nighttime the values are dropped to a static brightness level.  Down theh road I'm going to add some more logic to determine if the kids are in bed (kids bedroom fans on/off) and do some more precise dimming.  If one person is in bed the main lights only go to a lower level as to not wake the other person up.  If both people are in bed only the single bulb above the sink turns on with motion and one light in the dining room.
 
 ![Kitchen](https://i.imgur.com/l2Qqyfh.png)
 
