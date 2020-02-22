@@ -8,6 +8,9 @@ Setup / Testing Video - https://youtu.be/Ei5JgMIUK8M
 
 Demo Video - https://youtu.be/Ei5JgMIUK8M
 
+HomeAssistant demo video - https://youtu.be/AAxlhA4UEeI
+
+
 ## Overview
 
 I recently remodeled my kitchen and added some pretty bright overhead lighting fixtures (Acenx Smart Dimmers) and motion control for them (Wyze Sense PIR).  A problem arose, our dog and cat will walk around at night and trigger the lights and even on a low brightness value based on time of day they still shine right into our bedroom.  I researched some options and this is what i came up with.  The thin film pressure sensors looked promising so i bought one and tried it.  After some testing for a few nights to get some values to work with and build automations on, this is what I've come up with.  I chose the ESP32 becuase it has several ADC (analoge to digital) pins and i wanted two sensors, one for each side of the bed.  The ESP8266 only has one ADC pin.
