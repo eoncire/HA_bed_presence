@@ -39,20 +39,32 @@ I used a little piece of double sided foam tape at the ends to hold it in place.
 
 ## Software
 
-**ESPHome** - The first step was getting a value we can read in HA.  The actual code for ESPHome is very basic and could be more in depth.  I should probably use the built in functions to average the data but this works.  I'm using the ADC platform of the sensor core in ESPHome and reporting the value back to HA every second (again, overkill).  I'm assuming you know the ESPHome basics and not going into any more detial here.
+**ESPHome** - The first step was getting a value we can read in HA.  The actual code for ESPHome is very basic and could be more in depth.  I should probably use the built in functions to average the data but this works.  I'm using the ADC platform of the sensor core in ESPHome to read the sensor value, then using the built in ESPHome automations and API, I'm turning on an input_boolean in HA directly from the ESP32.  My thoughts is that this approach takes another element out of the equation, the ESP is handling the logic to determine if the bed is occupied versus doing it in NodeRed.
+
+There is two lines of this in my ESPHome code, one for each side of the bed and I just called them Pressure1 and Pressure2.
 
 ````
 sensor:
   - platform: adc
     pin: GPIO35
     name: "Pressure 1"
-    update_interval: 1s
+    update_interval: 60s
     attenuation: 11db
-  - platform: adc  
-    pin: GPIO34
-    name: "Pressure 2"
-    update_interval: 1s
-    attenuation: 11db
+    on_value_range:
+     - above: 0.5
+       then:
+        - homeassistant.service:
+           service: input_boolean.turn_on
+           data:
+            entity_id: input_boolean.pressure1
+        - logger.log: Pressure1 On
+     - below: 0.49999
+       then:
+        - homeassistant.service:
+           service: input_boolean.turn_off
+           data:
+            entity_id: input_boolean.pressure1
+        - logger.log: Pressure1 Off
 ````
 
 **HomeAssistant** - Theres not a whole lot special in HA here, other than showing a readout for testing.  HA does control my lighitng which this sensor is part of, as well as a bedroom box fan on a smart switch.  The actual automations are all in NodeRed.
@@ -61,61 +73,70 @@ sensor:
 
 ## Automations
 
-![NodeRed Flow](https://i.imgur.com/3ZXEO0q.png)
+![NodeRed Flow](https://i.imgur.com/sWmsW2q.png)
 
-Link to the flow - https://pastebin.com/iajAT8FC
+Link to the flow - https://pastebin.com/2wp7h9nD
 
-The basic flow is as follows.  A **state_changed** node for each pressure sensor.  That sends the value readout (voltage) of the ADC pin on the ESP32.  
+I want to know if the bed is in one of three states; empty, one person, two people (down the road I'll do conditional based on which side).  I'm doing this on two different fronts, one is a global variable in NodeRed (global.mbr_bed) and the other is an input_select in HA for a visual representation in the frontend.  The variable is either 0, 1, or 2 and can be used elsewhere in NodeRed pretty easily.  The input_select is either Empty, One, or Two.
 
-Next is a switch node where we set our trigger values.  In my case anything above 0.50v means someone (not the dog or a child) is in the bed.  My switch node is set up as so. ![Switch Node Config](https://i.imgur.com/zDX1Oz3.png)
+The basic flow is as follows.  The start of the flow is an **events: state** node for each pressure input_boolean.  It reports either on or off.  I made a flow for each state i want to evaluate as true or false, and only one state is true at any given time.  The input_booleans go to a **node-red-contrib-bool-gate** (https://flows.nodered.org/node/node-red-contrib-bool-gate) which is the logic in the flow.  You tell that node specifically what data you want it to look at and evaluate, in this case it is the msg.payload of the two pressure sensor input_booleans.  You pick the gate type (AND, OR, XOR, NOR, etc) and it will report either true or false on the payload of msg.bool.  Here is the setup for that node for the flow that reads true when both pressure sensors / input_booleans are on;
 
-For some reason that i'm not quite sure of, when the sensor reads 0.0v is sometimes is reported as OFF to HA, so in the switch node I added a switch for that.  All values are strings FWIW.
+![AND Gate](https://i.imgur.com/twYaTFG.png)
 
-One step ahead is the boolean_logic node.  BUT, before we get there we need to format our data being fed into it.  After the switch node in our flow is a **change** node.  That takes the lower level of our switch node (as well as the off state) and changes the payload to **0**.
+The AND gate will report true if both of the rules we created are true, pressure1 and pressure2 = on.  Again, the result of that node is msg.bool and it's a boolean, either true or false.  We can use our handy dandy switch node to split the result of this gate.
 
-Now we come to the **booleanlogicultimate** node.  https://www.npmjs.com/package/node-red-contrib-boolean-logic-ultimate  This is what really makes the automation work.  It takes two different topics and compares their payloads to be either true or false.  It has 3 different outputs (AND, OR, XOR) and can compare as many topics as you want.  What we're doing here is comparing the two pressure sensor values to be TRUE (above zero) or FALSE (equal to zero).  The setup for the boolean_logic node is as follows (standard).
+![Switch Node](https://i.imgur.com/YaphFIG.png)
 
-![Boolean Logic](https://i.imgur.com/fEXIX4R.png)
+Now we have something we can use for automations when both sides of the bed are occupied.  Next in the flow we set the global variable to "2" and set our input_select to "Two".
 
-I didn't totally understand how this node worked at first, but once it clicked it made perfect sense.  You need two different TOPICS to compare.  Using two different sensor entities will do that, each one is it's own topic (my understanding).  I'm leaving the values as strings which is fine for this node.  It'll convert stings to numbers, anything above zero will be treated as TRUE, a zero value will be treated as FALSE.  That's why I used the switch and change nodes after the sensor value to set our TRUE / FALSE limits for this logic node.
+![Further Automating](https://i.imgur.com/zUoM26I.png)
 
-Now coming out of the boolean_logic node we have 3 outputs, AND, OR, XOR from top to bottom.  I'm using AND (both side of the bed occupied) and OR (either side of the bed occupied).
+Using a change node we change (set) our variable global.mbr_bed to "2".
 
-![Flow](https://i.imgur.com/X3AZcCk.png)
+![Change Node](https://i.imgur.com/Il5O3Wc.png)
 
-**AND** output is fed to a basic switch node to seperate TRUE and FALSE payloads so we can automate accordingly.  The boolean_logic node sets the message.payload to TRUE or FALSE based on the state.  I want to set a global variable to use elsewhere in NodeRed.  That is done with a **change** node set up as follows.
+Right after that we have a **call service** node to change the input_select to "Two".
 
-![Variable Setup](https://i.imgur.com/Um6YjFL.png)
+![Call Service](https://i.imgur.com/fIqifJx.png)
 
-I repeat the same setup for a FALSE payload, setting the global variable of mbr_occupied_and to FALSE, but with the help of a trigger node to "debounce" the variable.  For example, if the sensor value is disrupted for a second i don't want the value to change.  The **trigger** node is simple, but very helpful.  Both the TRUE and FALSE output from the switch node is fed into the trigger.  On receiving a FALSE payload it'll start a timer (5 sec), if it receives nothing in that time it'll pass the original message and set the global variable to FALSE.  If it sees another TRUE payload then it'll shut off and reset the timer.
+That's the basics of the flow.  I made a different flow for each bed state, the only real difference is the gate type.  Only one state should be active at a time, so using this table i decided which type of gate for each state, AND for both sides of the bed, XOR for just one side of the bed, and NOR for neither.  Only one will evaluate as true at a time (important, otherwise your bedroom fan automation turns off in the middle of the night and you lose some WAF points).
 
-![Trigger Node](https://i.imgur.com/8F5htNI.png)
+![Gate Choices](https://i.imgur.com/XPFMCY4.png)
 
-Next is the bottom half of the boolean_logic output for the **OR** values.  If there's just one person in the bed there are still things automations i want done.
+The trigger nodes aren't currently used, but I do use the **Link Out** node as another way to use this bed state in other automations like lighting.  You give that node a name, then use the Link In node elsewhere and select the name you want to link it to.
 
-![Or](https://i.imgur.com/CHpuQI8.png)
+![Link Out](https://i.imgur.com/LHaxHj4.png)
 
-Again, I set a global variable (mbr_occupied_or) to TRUE or FALSE with a switch node, and a trigger node to debounce it turning off.  I also added a **call_service** node in here to turn the master bedroom fan on when someone is in bed, then wait a couple minutes to turn off once the bed is empty.
-
-Lastly is a **link_out** node on the two outputs of the boolean_logic nodes that I'm using.  This allows me to use the output of this flow elsewhere in NodeRed for other automations in case i don't want to use the global variable i set.
-
-![Link Out](https://i.imgur.com/ttGqf7m.png)
 
 
 ## Lighting FLow Integration
 
 Here is the disaster of my kitchen lighting flow....
 
-![Kitchen](https://i.imgur.com/JjEb8Xq.png)
+![Kitchen](https://i.imgur.com/l2Qqyfh.png)
 
-Here is how I used this in my kitchen lighting flow.  I feed the 3 Wyze motion sensors i have into a switch node.  
+In my Kitchen tab i can drop the link in node and use that automation flow to trigger something, like turning off all of the lights in the house between night and sunrise as soon as both sides of the bed are occupied.
+
+![Link In](https://i.imgur.com/Nwa6F6r.png)
+
+Turn off all of the lights when between set time.
+
+![Lights Out](https://i.imgur.com/G14kStM.png)
+
+To make the lights react based on bed occupancy I feed the 3 Wyze motion sensors i have into a switch node.  
 
 Actually, before the switch node is a simple **gate** node for another function.  I have an input_boolean set up in HA called Kitchen Motion.  That is exposed to my GoogleHome devices to be able to control via voice.  If that boolean / switch is turned on, it'll close the gate node and not allow any motion to be passed along the flow.  Say if we're sitting down to watch TV at night, I can tell google to turn off kitchen motion and the lights won't come on.  I have a small house that's very open, the kitchen / dining / living room all flow together and the kitchen lights are really bright.  
 
-Anywho, the switch node is set up to check the status of the global variable which is set in the other flow when both sides of the bed are occupied.  If that variable is TRUE then we go down one path, if FALSE then another.  That's how I set the lights to turn on / off differently if the bed is occupied.
+Anywho, the switch node is set up to check the status of the global variable which is set in the other flow when both sides of the bed are occupied.  If that variable is 1 then we go down one path, if 2 then another, and if 0 a third.  That's how I set the lights to turn on / off differently if the bed is occupied.
 
-![Switch](https://i.imgur.com/BtbPD8i.png)
+![Switch](https://i.imgur.com/SuUbVbd.png)
 
 If the bed is occupied on both sides and there is motion detected, only the light above the sink (single LED bulb) and the dining room overhead light (3 small LED bulbs) are turned on, and only at 10% brightness.  The delay for off (trigger node FTW!) is quick, only 1 minute.
+
+## Other Possibilities
+
+Once we have the bed presence set up, other automations are a breeze!  Here's another example, fan control.  I have a box fan in the bedroom thats plugged into a smart switch.  I made another simple flow using the same setup of the two pressure booleans fed to a logic gate (OR gate in this example).  If either side, or both sides of the bed are occupied, it evaluates as true and will turn on the fan in the bedroom, then off once the bed is empty.
+
+![Fan Control](https://i.imgur.com/Ez2CI37.png)
 
 
