@@ -4,7 +4,7 @@ HomeAssitant / ESPHome / NodeRed bed presence and automations
 
 Using an ESP32 flashed with ESPHome, two thin film pressure resistors, some NodeRed magic on the backend and HomeAssistant to tie it all together.
 
-Setup / Testing Video - https://youtu.be/Ei5JgMIUK8M
+Setup / Testing Video - https://youtu.be/b8CXDNrL2bU
 
 Demo Video - https://youtu.be/Ei5JgMIUK8M
 
